@@ -3,37 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alipen - Diseño con IA</title>
+    <title>Alipen IA - Diseño de Espacios</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f0f2f5; color: #333; }
-        .card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: inline-block; max-width: 500px; }
-        h1 { color: #1a73e8; }
-        .upload-area { border: 2px dashed #ccc; padding: 20px; margin: 20px 0; border-radius: 10px; }
-        button { background-color: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #1557b0; }
-        #preview { margin-top: 20px; max-width: 100%; border-radius: 10px; display: none; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background-color: #f8f9fa; color: #333; }
+        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; margin: 40px auto; }
+        h1 { color: #007bff; margin-bottom: 10px; }
+        p { color: #666; margin-bottom: 30px; }
+        .upload-box { border: 2px dashed #007bff; padding: 20px; border-radius: 10px; background: #f0f7ff; margin-bottom: 20px; }
+        input[type="file"] { margin-bottom: 10px; }
+        button { background: #007bff; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #loading { display: none; margin-top: 20px; font-style: italic; color: #555; }
+        .spinner { border: 4px solid rgba(0,0,0,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #007bff; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #resultado-container { margin-top: 30px; }
+        img { max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
-    <div class="card">
+
+    <div class="container">
         <h1>Alipen IA</h1>
-        <p>Transforma tu fachada o cocina con un solo clic.</p>
+        <p>Sube una foto de tu fachada o habitación y deja que la IA la transforme.</p>
         
-        <div class="upload-area">
-            <input type="file" id="foto" accept="image/*">
+        <div class="upload-box">
+            <input type="file" id="input-foto" accept="image/*">
         </div>
-        
-        <button onclick="procesar()">Generar Nuevo Diseño</button>
-        
-        <div id="mensaje" style="margin-top: 20px; font-weight: bold; color: #666;"></div>
-        <img id="preview" src="" alt="Resultado">
+
+        <button id="btn-generar" onclick="generarDiseno()">Generar Nuevo Diseño</button>
+
+        <div id="loading">
+            <div class="spinner"></div> Procesando tu diseño... esto puede tardar unos 30-40 segundos.
+        </div>
+
+        <div id="resultado-container"></div>
     </div>
 
-    <script>
-        function procesar() {
-            const msg = document.getElementById('mensaje');
-            msg.innerText = "Conectando con la IA de Alipen... espera un momento.";
-            // Nota: En el siguiente paso conectaremos esto a tu Space de Hugging Face
+    <script type="module">
+        import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+
+        window.generarDiseno = async function() {
+            const fileInput = document.getElementById('input-foto');
+            const btn = document.getElementById('btn-generar');
+            const loading = document.getElementById('loading');
+            const resultadoDiv = document.getElementById('resultado-container');
+
+            if (fileInput.files.length === 0) {
+                alert("Por favor, selecciona una foto de tu equipo.");
+                return;
+            }
+
+            // Bloquear botón y mostrar carga
+            btn.disabled = true;
+            loading.style.display = "block";
+            resultadoDiv.innerHTML = "";
+
+            try {
+                // CONEXIÓN CON TU SPACE DE HUGGING FACE
+                const app = await Client.connect("arquitecturagms-spec/alipen-arte");
+                
+                // Enviamos la foto a la función predict
+                const result = await app.predict("/predict", [
+                    fileInput.files[0], 
+                ]);
+
+                // Mostrar el resultado
+                const img = document.createElement("img");
+                img.src = result.data[0].url;
+                resultadoDiv.innerHTML = "<h3>¡Tu diseño está listo!</h3>";
+                resultadoDiv.appendChild(img);
+
+            } catch (error) {
+                console.error("Error detallado:", error);
+                alert("La IA está descansando o el Space está apagado. Verifica que en Hugging Face diga 'Running'.");
+            } finally {
+                btn.disabled = false;
+                loading.style.display = "none";
+            }
         }
     </script>
 </body>
