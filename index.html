@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alipen - Diseño con IA</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f0f2f5; color: #333; }
+        .card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: inline-block; max-width: 500px; }
+        h1 { color: #1a73e8; }
+        .upload-area { border: 2px dashed #ccc; padding: 20px; margin: 20px 0; border-radius: 10px; }
+        button { background-color: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #1557b0; }
+        #preview { margin-top: 20px; max-width: 100%; border-radius: 10px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Alipen IA</h1>
+        <p>Transforma tu fachada o cocina con un solo clic.</p>
+        
+        <div class="upload-area">
+            <input type="file" id="foto" accept="image/*">
+        </div>
+        
+        <button onclick="procesar()">Generar Nuevo Diseño</button>
+        
+        <div id="mensaje" style="margin-top: 20px; font-weight: bold; color: #666;"></div>
+        <img id="preview" src="" alt="Resultado">
+    </div>
+
+    <script>
+        function procesar() {
+            const msg = document.getElementById('mensaje');
+            msg.innerText = "Conectando con la IA de Alipen... espera un momento.";
+            // Nota: En el siguiente paso conectaremos esto a tu Space de Hugging Face
+        }
+    </script>
+</body>
+</html>
