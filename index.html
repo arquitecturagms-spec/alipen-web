@@ -11,14 +11,14 @@
         p { color: #666; margin-bottom: 30px; }
         .upload-box { border: 2px dashed #007bff; padding: 20px; border-radius: 10px; background: #f0f7ff; margin-bottom: 20px; }
         input[type="file"] { margin-bottom: 10px; }
-        button { background: #007bff; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
+        button { background: #007bff; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; width: 100%; }
         button:hover { background: #0056b3; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         #loading { display: none; margin-top: 20px; font-style: italic; color: #555; }
-        .spinner { border: 4px solid rgba(0,0,0,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #007bff; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; }
+        .spinner { border: 4px solid rgba(0,0,0,0.1); width: 30px; height: 30px; border-radius: 50%; border-left-color: #007bff; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #resultado-container { margin-top: 30px; }
-        img { max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        img { max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -54,34 +54,24 @@
                 return;
             }
 
-            // Bloquear botón y mostrar carga
+            // Configuración visual de carga
             btn.disabled = true;
             loading.style.display = "block";
             resultadoDiv.innerHTML = "";
 
             try {
-                // CONEXIÓN CON TU SPACE DE HUGGING FACE
-                const app = await Client.connect("arquitecturagms-spec/alipen-arte");
+                // CONEXIÓN CORREGIDA: Usando el nombre del Space de tu primera consulta
+                const app = await Client.connect("alipen-arte/mi-disenador-ia");
                 
-                // Enviamos la foto a la función predict
+                // Realizar la predicción
                 const result = await app.predict("/predict", [
                     fileInput.files[0], 
                 ]);
 
-                // Mostrar el resultado
-                const img = document.createElement("img");
-                img.src = result.data[0].url;
-                resultadoDiv.innerHTML = "<h3>¡Tu diseño está listo!</h3>";
-                resultadoDiv.appendChild(img);
-
-            } catch (error) {
-                console.error("Error detallado:", error);
-                alert("La IA está descansando o el Space está apagado. Verifica que en Hugging Face diga 'Running'.");
-            } finally {
-                btn.disabled = false;
+                // Limpiar mensaje de carga
                 loading.style.display = "none";
-            }
-        }
-    </script>
-</body>
-</html>
+
+                // Procesar la imagen resultante (Gradio suele devolver un array en .data)
+                if (result.data && result.data[0]) {
+                    const imgData = result.data[0];
+                    const imgUrl = typeof imgData === 'string' ? imgData :
