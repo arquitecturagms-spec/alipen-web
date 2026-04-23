@@ -2,15 +2,27 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alipen IA - Generador</title>
+    <link rel="icon" href="data:,">
     <style>
         body { font-family: sans-serif; text-align: center; padding: 50px; background: #f4f4f4; }
         .box { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: inline-block; width: 80%; max-width: 500px; }
-        #loading { display: none; color: blue; font-weight: bold; margin-top: 20px; }
-        img { max-width: 100%; margin-top: 20px; border-radius: 10px; border: 2px solid #ddd; }
-        button { background: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:disabled { background: #ccc; }
-        .btn-descargar { display: inline-block; margin-top: 10px; color: #3498db; text-decoration: none; font-weight: bold; }
+        #loading { display: none; color: #3498db; font-weight: bold; margin-top: 20px; }
+        img { max-width: 100%; margin-top: 20px; border-radius: 10px; border: 2px solid #ddd; display: block; margin-left: auto; margin-right: auto; }
+        button { background: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #2980b9; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-descargar { 
+            display: inline-block; 
+            margin-top: 15px; 
+            padding: 10px 20px; 
+            background: #27ae60; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
@@ -32,20 +44,23 @@ async function procesarImagen() {
     const loading = document.getElementById('loading');
     const resDiv = document.getElementById('resultado');
 
+    // 1. Validación
     if (!fileInput.files[0]) {
         alert("Por favor, selecciona una foto primero.");
         return;
     }
 
+    // 2. Interfaz en modo espera
     btn.disabled = true;
     loading.style.display = 'block';
     resDiv.innerHTML = '';
 
+    // 3. Empaquetado de imagen
     const formData = new FormData();
     formData.append('image', fileInput.files[0]);
 
     try {
-        // Asegúrate de que esta URL sea accesible públicamente
+        // 4. Petición al servidor de Hugging Face
         const response = await fetch("https://alipen-arte-mi-disenador-ia.hf.space/remodelar", {
             method: "POST",
             body: formData
@@ -53,19 +68,22 @@ async function procesarImagen() {
 
         if (!response.ok) throw new Error("Error en el servidor");
 
+        // 5. Conversión de respuesta a imagen
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
 
+        // 6. Mostrar resultado final
         resDiv.innerHTML = `
+            <hr style="margin-top:20px; border: 0; border-top: 1px solid #eee;">
             <h3>¡Diseño listo!</h3>
-            <img src="${url}" alt="Resultado">
+            <img src="${url}" alt="Resultado del diseño">
             <br>
             <a href="${url}" download="remodelacion-alipen.png" class="btn-descargar">Descargar Imagen</a>
         `;
 
     } catch (error) {
-        console.error(error);
-        alert("Error de conexión. Asegúrate de que el backend en Hugging Face esté activo.");
+        console.error("Error detallado:", error);
+        alert("No se pudo conectar con la IA. Revisa que tu Space en Hugging Face esté 'Running'.");
     } finally {
         btn.disabled = false;
         loading.style.display = 'none';
