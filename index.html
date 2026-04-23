@@ -10,7 +10,7 @@
         h1 { color: #007bff; margin-bottom: 10px; }
         p { color: #666; margin-bottom: 30px; }
         .upload-box { border: 2px dashed #007bff; padding: 20px; border-radius: 10px; background: #f0f7ff; margin-bottom: 20px; }
-        input[type="file"] { margin-bottom: 10px; }
+        input[type="file"] { margin-bottom: 10px; cursor: pointer; }
         button { background: #007bff; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; width: 100%; }
         button:hover { background: #0056b3; }
         button:disabled { background: #ccc; cursor: not-allowed; }
@@ -25,7 +25,7 @@
 
     <div class="container">
         <h1>Alipen IA</h1>
-        <p>Sube una foto de tu fachada o habitación y deja que la IA la transforme.</p>
+        <p>Sube una foto de tu fachada o habitación y la IA diseñará una propuesta contemporánea.</p>
         
         <div class="upload-box">
             <input type="file" id="input-foto" accept="image/*">
@@ -34,13 +34,16 @@
         <button id="btn-generar" onclick="generarDiseno()">Generar Nuevo Diseño</button>
 
         <div id="loading">
-            <div class="spinner"></div> Procesando tu diseño... esto puede tardar unos 30-40 segundos.
+            <div class="spinner"></div> 
+            <strong>Procesando tu diseño...</strong> <br>
+            Esto tarda unos 30-40 segundos. Por favor, no cierres la ventana.
         </div>
 
         <div id="resultado-container"></div>
     </div>
 
     <script type="module">
+        // Importamos la librería de Gradio para conectar con Hugging Face
         import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
 
         window.generarDiseno = async function() {
@@ -49,29 +52,50 @@
             const loading = document.getElementById('loading');
             const resultadoDiv = document.getElementById('resultado-container');
 
+            // 1. Validación de archivo
             if (fileInput.files.length === 0) {
                 alert("Por favor, selecciona una foto de tu equipo.");
                 return;
             }
 
-            // Configuración visual de carga
+            // 2. Interfaz en modo "Cargando"
             btn.disabled = true;
             loading.style.display = "block";
             resultadoDiv.innerHTML = "";
 
             try {
-                // CONEXIÓN CORREGIDA: Usando el nombre del Space de tu primera consulta
-                const app = await Client.connect("alipen-arte/mi-disenador-ia");
+                // 3. Conexión al Space (Nombre exacto según tus capturas)
+                const app = await Client.connect("Alipen-arte/mi-disenador-ia");
                 
-                // Realizar la predicción
+                // 4. Enviamos la imagen a la función de predicción
+                // Nota: Enviamos el archivo directamente en un array []
                 const result = await app.predict("/predict", [
                     fileInput.files[0], 
                 ]);
 
-                // Limpiar mensaje de carga
-                loading.style.display = "none";
-
-                // Procesar la imagen resultante (Gradio suele devolver un array en .data)
+                // 5. Procesamos el resultado
                 if (result.data && result.data[0]) {
                     const imgData = result.data[0];
-                    const imgUrl = typeof imgData === 'string' ? imgData :
+                    // Si el resultado es un objeto con URL o un string directo
+                    const imgUrl = typeof imgData === 'string' ? imgData : imgData.url;
+
+                    resultadoDiv.innerHTML = "<h3>¡Propuesta de diseño lista!</h3>";
+                    const img = document.createElement("img");
+                    img.src = imgUrl;
+                    resultadoDiv.appendChild(img);
+                } else {
+                    throw new Error("La IA no devolvió ninguna imagen.");
+                }
+
+            } catch (error) {
+                console.error("Error en la conexión:", error);
+                alert("Error: El Space de IA está apagado o hay mucha gente usándolo. Verifica que en Hugging Face aparezca en 'Running'.");
+            } finally {
+                // 6. Restauramos el botón
+                btn.disabled = false;
+                loading.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>
