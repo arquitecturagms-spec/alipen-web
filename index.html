@@ -25,14 +25,6 @@
 </div>
 
 <script>
-// Función para convertir la imagen a un formato que la IA entienda
-const toBase64 = file => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-});
-
 async function procesarImagen() {
     const fileInput = document.getElementById('input-foto');
     const btn = document.getElementById('btn-generar');
@@ -45,33 +37,32 @@ async function procesarImagen() {
     loading.style.display = "block";
     resDiv.innerHTML = "";
 
-    try {
-        // 1. Convertimos la imagen
-        const imagenBase64 = await toBase64(fileInput.files[0]);
+    // Creamos el formulario para enviar la imagen real, no un texto Base64
+    const formData = new FormData();
+    formData.append('image', fileInput.files[0]);
 
-        // 2. Enviamos a Hugging Face (URL corregida y formato JSON)
-        const response = await fetch("https://alipen-arte-mi-disenador-ia.hf.space/run/predict", {
+    try {
+        // URL corregida para apuntar a la ruta /remodelar de tu Flask
+        const response = await fetch("https://alipen-arte-mi-disenador-ia.hf.space/remodelar", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                data: [
-                    imagenBase64, 
-                    "una fachada moderna de lujo, diseño arquitectónico profesional" // Tu instrucción para la IA
-                ]
-            })
+            body: formData
+            // No necesitamos headers de Content-Type, el navegador los pone solo con FormData
         });
 
-        if (!response.ok) throw new Error("Servidor ocupado o apagado");
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Servidor ocupado");
+        }
 
-        const result = await response.json();
+        // Como el servidor responde con una imagen (send_file), la convertimos a un objeto visual
+        const blob = await response.blob();
+        const urlImagen = URL.createObjectURL(blob);
         
-        // 3. Mostramos el resultado (Hugging Face devuelve la imagen en data[0])
-        const finalImg = result.data[0];
-        resDiv.innerHTML = `<h3>Resultado:</h3><img src="${finalImg}">`;
+        resDiv.innerHTML = `<h3>Resultado:</h3><img src="${urlImagen}">`;
 
     } catch (error) {
         console.error(error);
-        alert("Error de conexión. Asegúrate de que en Hugging Face diga 'Running' en verde.");
+        alert("Error: " + error.message + ". Revisa que el Space esté en 'Running'.");
     } finally {
         btn.disabled = false;
         loading.style.display = "none";
