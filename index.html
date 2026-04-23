@@ -30,7 +30,7 @@
             const resDiv = document.getElementById('resultado');
 
             if (!fileInput.files[0]) {
-                alert("Por favor, selecciona una foto de tu fachada o proyecto.");
+                alert("Por favor, selecciona una foto.");
                 return;
             }
 
@@ -42,29 +42,32 @@
             formData.append('image', fileInput.files[0]);
 
             try {
-                // Llamada al servidor Python (ruta relativa para compatibilidad)
+                // Llama al servidor Flask en la ruta /remodelar
                 const response = await fetch("/remodelar", {
                     method: "POST",
                     body: formData
                 });
 
-                if (!response.ok) throw new Error("La IA está cargando o el servidor no responde.");
+                if (!response.ok) {
+                    const errorJson = await response.json();
+                    throw new Error(errorJson.error || "Error en el servidor");
+                }
 
                 const blob = await response.blob();
                 const url = URL.createObjectURL(blob);
 
                 resDiv.innerHTML = `
                     <div style="padding: 10px; background: #e8f6f3; border-radius: 10px;">
-                        <h3 style="color: #16a085;">¡Diseño Arquitectónico Listo!</h3>
+                        <h3 style="color: #16a085;">¡Diseño Alipen IA Listo!</h3>
                         <img src="${url}" alt="Resultado">
                         <br>
-                        <a href="${url}" download="diseno-alipen.png" class="btn-descargar">💾 Descargar Imagen</a>
+                        <a href="${url}" download="remodelacion-alipen.png" class="btn-descargar">💾 Descargar Imagen</a>
                     </div>
                 `;
 
             } catch (error) {
                 console.error("Error:", error);
-                alert("Hubo un problema: " + error.message);
+                alert("Aviso: " + error.message);
             } finally {
                 btn.disabled = false;
                 loading.style.display = 'none';
@@ -76,13 +79,13 @@
 
 <div class="box">
     <h1>Alipen IA</h1>
-    <p>Sube la foto de una <b>fachada</b> o <b>interior</b> para transformarla con inteligencia artificial.</p>
+    <p>Sube la foto de tu <b>fachada</b> o <b>interior</b> y deja que la IA la transforme.</p>
     
     <input type="file" id="input-foto" accept="image/*">
     <br>
     <button id="btn-generar" onclick="procesarImagen()">GENERAR NUEVO DISEÑO</button>
     
-    <div id="loading">✨ El arquitecto IA está diseñando tu proyecto...</div>
+    <div id="loading">✨ El arquitecto IA está trabajando...</div>
     <div id="resultado"></div>
 </div>
 
