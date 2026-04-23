@@ -1,51 +1,5 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alipen IA - Diseño de Espacios</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background-color: #f8f9fa; color: #333; }
-        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; margin: 40px auto; }
-        h1 { color: #007bff; margin-bottom: 10px; }
-        p { color: #666; margin-bottom: 30px; }
-        .upload-box { border: 2px dashed #007bff; padding: 20px; border-radius: 10px; background: #f0f7ff; margin-bottom: 20px; }
-        input[type="file"] { margin-bottom: 10px; cursor: pointer; }
-        button { background: #007bff; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; width: 100%; }
-        button:hover { background: #0056b3; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        #loading { display: none; margin-top: 20px; font-style: italic; color: #555; }
-        .spinner { border: 4px solid rgba(0,0,0,0.1); width: 30px; height: 30px; border-radius: 50%; border-left-color: #007bff; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #resultado-container { margin-top: 30px; }
-        img { max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); margin-top: 15px; }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <h1>Alipen IA</h1>
-        <p>Sube una foto de tu fachada o habitación y la IA diseñará una propuesta contemporánea.</p>
-        
-        <div class="upload-box">
-            <input type="file" id="input-foto" accept="image/*">
-        </div>
-
-        <button id="btn-generar" onclick="generarDiseno()">Generar Nuevo Diseño</button>
-
-        <div id="loading">
-            <div class="spinner"></div> 
-            <strong>Procesando tu diseño...</strong> <br>
-            Esto tarda unos 30-40 segundos. Por favor, no cierres la ventana.
-        </div>
-
-        <div id="resultado-container"></div>
-    </div>
-
-<script type="module">
-    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
-
-    window.generarDiseno = async function() {
+<script>
+    async function generarDiseno() {
         const fileInput = document.getElementById('input-foto');
         const btn = document.getElementById('btn-generar');
         const loading = document.getElementById('loading');
@@ -56,55 +10,42 @@
             return;
         }
 
+        // Interfaz de carga
         btn.disabled = true;
         loading.style.display = "block";
         resultadoDiv.innerHTML = "";
 
+        // Preparamos los datos para tu Flask en app.py
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+        formData.append('prompt', "Fachada contemporánea, hormigón visto, grandes ventanales, iluminación atardecer");
+
         try {
-            // Conexión con el nombre exacto
-            const app = await Client.connect("Alipen-arte/mi-disenador-ia");
-            
-            // PREPARACIÓN DEL ARCHIVO
-            // Algunos modelos de Hugging Face requieren que el archivo se envíe así:
-            const imageFile = fileInput.files[0];
-            
-            // Llamada a la predicción
-            const result = await app.predict("/predict", [
-                imageFile, // Primer parámetro: la imagen
-            ]);
+            // URL de tu Space (la dirección directa de la app Flask)
+            // IMPORTANTE: Cambia 'Alipen-arte' y 'mi-disenador-ia' si no son exactos
+            const response = await fetch("https://alipen-arte-mi-disenador-ia.hf.space/remodelar", {
+                method: "POST",
+                body: formData
+            });
 
-            if (result && result.data) {
-                // Buscamos la URL en la respuesta (puede estar en diferentes niveles)
-                let imgUrl = "";
-                if (typeof result.data[0] === 'string') {
-                    imgUrl = result.data[0];
-                } else if (result.data[0] && result.data[0].url) {
-                    imgUrl = result.data[0].url;
-                }
+            if (!response.ok) throw new Error("Error en la respuesta de la IA");
 
-                if (imgUrl) {
-                    resultadoDiv.innerHTML = "<h3>¡Propuesta lista!</h3>";
-                    const img = document.createElement("img");
-                    img.src = imgUrl;
-                    resultadoDiv.appendChild(img);
-                } else {
-                    throw new Error("No se encontró la URL de la imagen en la respuesta.");
-                }
-            }
+            // Como tu Python devuelve 'image/jpeg', convertimos el resultado a un link visual
+            const blob = await response.blob();
+            const imgUrl = URL.createObjectURL(blob);
+
+            resultadoDiv.innerHTML = "<h3>¡Propuesta lista!</h3>";
+            const img = document.createElement("img");
+            img.src = imgUrl;
+            img.style.maxWidth = "100%";
+            resultadoDiv.appendChild(img);
 
         } catch (error) {
-            console.error("Error detallado de la IA:", error);
-            
-            // Si el error es de conexión de origen (CORS)
-            if (error.message.includes("fetch")) {
-                alert("Error de conexión: El navegador bloqueó la petición. Asegúrate de estar viendo la página desde una URL (GitHub Pages) y no abriendo el archivo .html directamente desde tu carpeta.");
-            } else {
-                alert("La IA está ocupada o el formato de imagen no es compatible. Intenta con una foto más pequeña o espera un minuto.");
-            }
+            console.error("Error:", error);
+            alert("Hubo un problema. Asegúrate de que el Space esté en 'Running' y que la URL sea correcta.");
         } finally {
             btn.disabled = false;
             loading.style.display = "none";
         }
     }
 </script>
- 
