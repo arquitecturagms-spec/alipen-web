@@ -44,11 +44,13 @@
 
             try {
                 // URL CONSTRUIDA SEGÚN TU SPACE ACTUAL
-                const response = await fetch("https://alipen-arte-mi-disenador-ia.hf.space/remodelar", {
-                    method: "POST",
-                    body: formData
-                });
-
+              const response = await fetch("https://alipen-arte-mi-disenador-ia.hf.space/remodelar", {
+    method: "POST",
+    body: formData,
+    headers: {
+        "Accept": "*/*"
+    }
+});
                 if (!response.ok) throw new Error("Error en el servidor de IA");
 
                 const blob = await response.blob();
