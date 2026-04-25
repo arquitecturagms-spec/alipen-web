@@ -47,7 +47,38 @@ with col2:
         elif archivo:
             with st.spinner("Analizando y calcando estructura..."):
                 try:
-                    # 1. Gemini analiza materiales (Usando el nuevo SDK google-genai)
+                    # 1. Gemini analiza materiales (Línea 53 corregida)
                     client_google = genai.Client(api_key=google_key)
+                    prompt_analisis = f"Describe materials for a {estilo} architectural remodel. Keep the structure exactly the same. English, 10 words max."
                     
-                    prompt_analisis = f"Describe materials for a {estilo} architectural remodel. Keep the structure exactly the same. English,
+                    response = client_google.models.generate_content(
+                        model="gemini-1.5-flash",
+                        contents=[prompt_analisis, img_input]
+                    )
+                    prompt_ia = response.text.strip()
+
+                    # 2. Motor de Imagen (Hugging Face)
+                    client_hf = InferenceClient("runwayml/stable-diffusion-v1-5", token=hf_token)
+                    
+                    # Redimensionar para estabilidad
+                    img_input.thumbnail((768, 768))
+
+                    # Llamada Image-to-Image (El Calco Real)
+                    imagen_final = client_hf.image_to_image(
+                        image=img_input,
+                        prompt=f"Professional architectural photo, {prompt_ia}, cinematic lighting, high-end materials, 8k, realistic",
+                        negative_prompt="deformed, changed structure, extra windows, distorted walls, blurry, low quality",
+                        strength=fuerza,
+                        guidance_scale=8.0
+                    )
+                    
+                    st.image(imagen_final, caption="Propuesta Alipen IA", width="stretch")
+                    st.success(f"Materiales aplicados: {prompt_ia}")
+
+                except Exception as e:
+                    st.error(f"Error técnico: {e}")
+        else:
+            st.warning("Primero debes subir una imagen.")
+
+st.markdown("---")
+st.caption("Alipen IA 2026 - Tecnología de Precisión Arquitectónica")
