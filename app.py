@@ -1,84 +1,80 @@
-import streamlit as st
+import os
+import io
+import time
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+from PIL import Image
 from google import genai
 from huggingface_hub import InferenceClient
-from PIL import Image
-import io
 
-# Configuración de la página
-st.set_page_config(page_title="Alipen IA - Arquitecto Pro", page_icon="🏠", layout="wide")
+app = Flask(__name__)
+CORS(app)
 
-# Estilo visual
-st.markdown("""
-    <style>
-    .stApp { background-color: #f4f7f6; }
-    .stButton>button { background-color: #1a73e8; color: white; font-weight: bold; width: 100%; height: 3em; }
-    </style>
-    """, unsafe_allow_html=True)
+# 1. CONFIGURACIÓN DE LLAVES (Secrets)
+HF_TOKEN = os.environ.get("HF_API_KEY")
+GOOGLE_KEY = os.environ.get("GOOGLE_API_KEY")
 
-st.title("🏠 Alipen IA: Calco Estructural")
-st.write("Transforma tu fachada respetando muros y ventanas originales.")
+# 2. CLIENTES DE IA
+client_google = genai.Client(api_key=GOOGLE_KEY) if GOOGLE_KEY else None
+client_img = InferenceClient("runwayml/stable-diffusion-v1-5", token=HF_TOKEN)
 
-# Barra lateral para llaves y ajustes
-with st.sidebar:
-    st.header("⚙️ Configuración")
-    google_key = st.text_input("Google API Key", type="password")
-    hf_token = st.text_input("Hugging Face Token", type="password")
-    
-    st.header("📐 Regla de Oro")
-    fuerza = st.slider("Fuerza del cambio", 0.1, 0.9, 0.45, 
-                       help="0.3 = Respeta tus líneas al máximo. 0.7 = La IA es más creativa.")
-    estilo = st.selectbox("Estilo Arquitectónico", ["Moderno Lujoso", "Industrial", "Minimalista", "Rústico"])
+@app.route("/")
+def index():
+    return send_file("index.html")
 
-# Cuerpo principal: Dos columnas
-col1, col2 = st.columns(2)
+@app.route("/remodelar", methods=["POST"])
+def remodelar():
+    try:
+        if 'image' not in request.files:
+            return jsonify({"error": "No se recibió imagen"}), 400
+        
+        file = request.files['image']
+        img_input = Image.open(file.stream).convert("RGB")
+        
+        # REGLA DE ORO: Redimensionar para calco exacto
+        img_input.thumbnail((768, 768))
+        
+        prompt_ia = "modern luxury architecture, high-end materials, glass and wood, realistic, 8k"
 
-with col1:
-    st.subheader("1. Estructura Original")
-    archivo = st.file_uploader("Sube tu foto o plano", type=['jpg', 'jpeg', 'png'])
-    if archivo:
-        img_input = Image.open(archivo)
-        st.image(img_input, caption="Estructura Base", width="stretch")
-
-with col2:
-    st.subheader("2. Resultado del Calco")
-    if st.button("GENERAR DISEÑO"):
-        if not google_key or not hf_token:
-            st.error("Por favor, introduce ambas llaves API en la izquierda.")
-        elif archivo:
-            with st.spinner("Analizando y calcando estructura..."):
-                try:
-                    # 1. Gemini analiza materiales (Línea 53 corregida)
-                    client_google = genai.Client(api_key=google_key)
-                    prompt_analisis = f"Describe materials for a {estilo} architectural remodel. Keep the structure exactly the same. English, 10 words max."
-                    
-                    response = client_google.models.generate_content(
-                        model="gemini-1.5-flash",
-                        contents=[prompt_analisis, img_input]
-                    )
+        # PASO 1: Gemini analiza materiales
+        if client_google:
+            try:
+                response = client_google.models.generate_content(
+                    model="gemini-1.5-flash",
+                    contents=["Describe only materials for a modern remodel. Keep the structure exactly the same. English, 15 words max.", img_input]
+                )
+                if response.text:
                     prompt_ia = response.text.strip()
+            except:
+                pass
 
-                    # 2. Motor de Imagen (Hugging Face)
-                    client_hf = InferenceClient("runwayml/stable-diffusion-v1-5", token=hf_token)
-                    
-                    # Redimensionar para estabilidad
-                    img_input.thumbnail((768, 768))
+        # PASO 2: Hugging Face hace el calco (Image-to-Image)
+        # Intentamos hasta 3 veces por si el servidor está ocupado
+        for i in range(3):
+            try:
+                imagen_final = client_img.image_to_image(
+                    image=img_input,
+                    prompt=f"Professional architectural photo, {prompt_ia}, cinematic lighting, highly detailed",
+                    negative_prompt="changed structure, extra windows, distorted walls, blurry, bad architecture",
+                    strength=0.45, # Mantiene el 55% de tu estructura original
+                    guidance_scale=7.5
+                )
+                
+                # Convertir resultado a bytes para enviar al HTML
+                img_io = io.BytesIO()
+                imagen_final.save(img_io, 'PNG')
+                img_io.seek(0)
+                return send_file(img_io, mimetype='image/png')
+            
+            except Exception as e:
+                if "503" in str(e):
+                    time.sleep(10)
+                    continue
+                raise e
 
-                    # Llamada Image-to-Image (El Calco Real)
-                    imagen_final = client_hf.image_to_image(
-                        image=img_input,
-                        prompt=f"Professional architectural photo, {prompt_ia}, cinematic lighting, high-end materials, 8k, realistic",
-                        negative_prompt="deformed, changed structure, extra windows, distorted walls, blurry, low quality",
-                        strength=fuerza,
-                        guidance_scale=8.0
-                    )
-                    
-                    st.image(imagen_final, caption="Propuesta Alipen IA", width="stretch")
-                    st.success(f"Materiales aplicados: {prompt_ia}")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-                except Exception as e:
-                    st.error(f"Error técnico: {e}")
-        else:
-            st.warning("Primero debes subir una imagen.")
-
-st.markdown("---")
-st.caption("Alipen IA 2026 - Tecnología de Precisión Arquitectónica")
+if __name__ == "__main__":
+    # Puerto 7860 para compatibilidad total
+    app.run(host="0.0.0.0", port=7860)
