@@ -20,8 +20,8 @@ st.write("Transforma tu fachada respetando muros y ventanas originales.")
 # Barra lateral para llaves y ajustes
 with st.sidebar:
     st.header("⚙️ Configuración")
-    google_key = st.text_input("Google API Key", type="password")
-    hf_token = st.text_input("Hugging Face Token", type="password")
+google_key = "TU_LLAVE_DE_GOOGLE_AQUI"
+hf_token = "TU_LLAVE_DE_HUGGING_FACE_AQUI"
     
     st.header("📐 Regla de Oro")
     fuerza = st.slider("Fuerza del cambio", 0.1, 0.9, 0.45, 
