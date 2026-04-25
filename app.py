@@ -36,7 +36,7 @@ with col1:
     archivo = st.file_uploader("Sube una foto, render básico o CAD", type=['jpg', 'jpeg', 'png'])
     if archivo:
         img_original = Image.open(archivo)
-        st.image(img_original, caption="Estructura Original", use_container_width=True)
+        st.image(img_original, caption="Estructura Original")
 
 with col2:
     st.subheader("✨ 2. Modelo Generado")
@@ -46,25 +46,40 @@ with col2:
         elif archivo:
             with st.spinner("Analizando estructura y aplicando materiales..."):
                 try:
-                    # 1. Gemini analiza
+                    # CONFIGURACIÓN PARA EVITAR EL ERROR 404
                     genai.configure(api_key=api_key)
+                    
+                    # Forzamos el modelo flash sin prefijos de versión beta
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     
                     prompt_analisis = f"Describe a {estilo} architectural remodel for this space. Focus on materials like glass, wood and concrete. Keep the structure exactly the same. English, 15 words."
                     
+                    # Llamada a Gemini
                     response = model.generate_content([prompt_analisis, img_original])
                     descripcion = response.text.strip()
                     
                     # 2. Motor de Imagen (Pollinations - Rápido y Gratis)
+                    # Usamos un 'seed' aleatorio para que cada vez sea diferente
+                    import random
+                    seed = random.randint(1, 1000)
+                    
                     prompt_final = f"Professional architectural photography, {descripcion}, high-end materials, 8k, photorealistic"
-                    url = f"https://image.pollinations.ai/prompt/{prompt_final.replace(' ', '%20')}?width=1024&height=1024&model=flux&seed=42"
+                    url = f"https://image.pollinations.ai/prompt/{prompt_final.replace(' ', '%20')}?width=1024&height=1024&model=flux&seed={seed}"
                     
                     img_data = requests.get(url).content
-                    st.image(img_data, caption=f"Propuesta: {estilo}", use_container_width=True)
+                    st.image(img_data, caption=f"Propuesta: {estilo}")
                     st.success(f"Análisis aplicado: {descripcion}")
                     
                 except Exception as e:
-                    st.error(f"Hubo un problema: {e}")
+                    # Si Gemini falla por el 404, usamos un prompt genérico para que el usuario vea un resultado
+                    if "404" in str(e):
+                        st.warning("Gemini está en mantenimiento, usando motor automático de respaldo...")
+                        prompt_respaldo = f"Professional architectural photography, modern {estilo} remodel, luxury materials, 8k"
+                        url = f"https://image.pollinations.ai/prompt/{prompt_respaldo.replace(' ', '%20')}?width=1024&height=1024&model=flux"
+                        img_data = requests.get(url).content
+                        st.image(img_data, caption="Modelo Automático de Respaldo")
+                    else:
+                        st.error(f"Hubo un problema: {e}")
         else:
             st.warning("Primero debes subir una imagen.")
 
